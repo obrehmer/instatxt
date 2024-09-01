@@ -13,9 +13,9 @@ year = input("Year (2024): ") or "2024"
 month = input("Month: ") 
 add = input("Additions: ") 
 
-ai_system_message = f"Schreibe einen text fuer einen instagramm Post, in englisch, mit 20 Hashtags, einfache Sprache, 2 Saetze, Schreibe aus der Beobachterperspektive neutral und professionell"
+ai_system_message = f"Write a text for an instagram post, in English, with 20 hashtags, simple language, 2 sentences, write from the observer's perspective, neutral and professional. You are a photographer. I need your assistance! Do not use 'my', use 'a' instead."
 
-ai_user_message = f"Fotografiert mit {cam} mit {obj}, in {loc}, fotografiert im {month} in  {year},  {add} "
+ai_user_message = f"taken with {cam} with a lens {obj}, in {loc}, in the {month} of  {year},  {add} "
 
 
 
