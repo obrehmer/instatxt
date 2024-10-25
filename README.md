@@ -16,4 +16,5 @@ python -m venv venv
 source venv/bin/activate
 git clone git@github.com:olsarnow/instatxt.git
 pip install -r instatxt/requirements.txt
+./instatxt/instatxt
 ```
