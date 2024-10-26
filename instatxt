@@ -30,4 +30,5 @@ completion = client.chat.completions.create(
 
 answer = (completion.choices[0].message.content)
 
-print(answer)
+print("\n".join(["-" * 10, str(answer), "-" * 10]))
+
