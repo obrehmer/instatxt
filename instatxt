@@ -9,7 +9,7 @@ client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
 cam = input("Camera Model (Canon EOS 3000):  ") or "Canon EOS 3000"
 obj = input("Objective (28-90 mm Zoom):  ") or "28-90 mm Zoom"
 loc = input("Location: ")  
-year = input("Year (2024): ") or "2024"
+year = input("Year (2025): ") or "2025"
 month = input("Month: ") 
 add = input("Additions: ") 
 fixtags = f"#film #kleinbild #35mm #analog #filmphotography"
