@@ -3,23 +3,41 @@
 from openai import OpenAI
 import os
 
-client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Kameraauswahl mit Default (1)
+print("Choose Camera:")
+print("1: Canon EOS 100 (28-80 mm Zoom)")
+print("2: Canon AF35ML (Canon Lens 40 mm)")
+cam_choice = input("Select camera [1]: ") or "1"
 
-cam = input("Camera Model (Canon EOS 100):  ") or "Canon EOS 100"
-obj = input("Objective (28-80 mm Zoom):  ") or "28-80 mm Zoom"
-loc = input("Location: ")  
+if cam_choice == "2":
+    cam = "Canon AF35ML"
+    obj = "Canon Lens 40 mm"
+else:
+    cam = "Canon EOS 100"
+    obj = "28-80 mm Zoom"
+
+# Weitere Eingaben
+loc = input("Location: ")
 year = input("Year (2025): ") or "2025"
-month = input("Month: ") 
-add = input("Additions: ") 
-fixtags = f"#film #kleinbild #35mm #analog #filmphotography"
+month = input("Month: ")
+add = input("Additions: ")
+fixtags = "#film #kleinbild #35mm #analog #filmphotography"
 
-ai_system_message = f"I need your help! You are a photographer and have posted a photo on Instagram. Write a text for an Instagram post in English, in simple language, in three sentences. The post should be written in a neutral and professional tone. Start with a sentence stating the location and date the picture was taken. Include 20 relevant hashtags and avoid the word “my”; use “a” or similar alternatives instead.always start with a sentence that includes the location and date the picture was taken. Start with location, year/month and end with camera model, lens. Write a total of 2000 characters."
+ai_system_message = (
+    "I need your help! You are a photographer and have posted a photo on Instagram. "
+    "Write a text for an Instagram post in English, in simple language, in three sentences. "
+    "The post should be written in a neutral and professional tone. Start with a sentence stating the "
+    "location and date the picture was taken. Include 20 relevant hashtags and avoid the word “my”; "
+    "use “a” or similar alternatives. Always start with a sentence that includes the location and date "
+    "the picture was taken. Start with location, year/month and end with camera model, lens. "
+    "Write a total of 2000 characters."
+)
 
-
-ai_user_message = f"taken with {cam} with a lens {obj}, in {loc}, in the {month} of  {year},  {add}, add the hashtags {fixtags} "
-
-
+ai_user_message = (
+    f"taken with {cam} with a lens {obj}, in {loc}, in the {month} of {year}, {add}, add the hashtags {fixtags}"
+)
 
 completion = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -29,7 +47,7 @@ completion = client.chat.completions.create(
     ]
 )
 
-answer = (completion.choices[0].message.content)
+answer = completion.choices[0].message.content
 
 print("\n".join(["-" * 10, str(answer), "-" * 10]))
 
