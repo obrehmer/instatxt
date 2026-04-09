@@ -20,7 +20,7 @@ else:
 
 # Weitere Eingaben
 loc = input("Location: ")
-year = input("Year (2025): ") or "2025"
+year = input("Year (2026): ") or "2026"
 month = input("Month: ")
 add = input("Additions: ")
 fixtags = "#film #kleinbild #35mm #analog #filmphotography"
