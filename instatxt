@@ -32,9 +32,15 @@ ai_system_message = (
     "location and date the picture was taken. Include 20 relevant hashtags and avoid the word “my”; "
     "use “a” or similar alternatives. Always start with a sentence that includes the location and date "
     "the picture was taken. Start with location, year/month and end with camera model, lens. "
-    "Write a total of 2000 characters."
+    "Write a total of 1000 characters. "
+    "Avoid contrast sentence structures like 'not X but Y'. "
+    "Avoid dramatic three-part sequences or staged escalation patterns. "
+    "Do not use epic framing phrases such as 'at the end of the day', 'that is the point', or similar. "
+    "Do not structure the text with many short lines or excessive spacing; keep it as normal flowing sentences. "
+    "Avoid rhetorical questions entirely. "
+    "Do not use emojis. "
+    "Avoid using dashes, especially long dashes, to create tension or emphasis; use standard punctuation instead."
 )
-
 ai_user_message = (
     f"taken with {cam} with a lens {obj}, in {loc}, in the {month} of {year}, {add}, add the hashtags {fixtags}"
 )
