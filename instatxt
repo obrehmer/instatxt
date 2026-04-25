@@ -46,7 +46,7 @@ ai_user_message = (
 )
 
 completion = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-5.5",
     messages=[
         {"role": "system", "content": ai_system_message},
         {"role": "user", "content": ai_user_message}
