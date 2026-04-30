@@ -7,8 +7,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Kameraauswahl mit Default (1)
 print("Choose Camera:")
-print("1: Canon EOS 100 (28-80 mm Zoom)")
-print("2: Canon AF35ML (Canon Lens 40 mm)")
+print("1: Canon EOS 10 (35-135 mm Zoom)")
+print("2: Canon EOS 10 (28-80 mm Zoom)")
+print("3: Canon AF35ML (Canon Lens 40 mm)")
 cam_choice = input("Select camera [1]: ") or "1"
 
 if cam_choice == "2":
@@ -46,7 +47,7 @@ ai_user_message = (
 )
 
 completion = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-5.4-mini",
     messages=[
         {"role": "system", "content": ai_system_message},
         {"role": "user", "content": ai_user_message}
