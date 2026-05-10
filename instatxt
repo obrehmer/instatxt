@@ -8,7 +8,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Kameraauswahl mit Default (1)
 print("Choose Camera:")
 print("1: Canon EOS 10 (35-135 mm Zoom)")
-print("2: Canon EOS 10 (28-80 mm Zoom)")
+print("2: Canon EOS 100 (28-80 mm Zoom)")
 print("3: Canon AF35ML (Canon Lens 40 mm)")
 cam_choice = input("Select camera [1]: ") or "1"
 
