@@ -2,22 +2,27 @@
 
 from openai import OpenAI
 import os
+import sys
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("OPENAI_API_KEY is not set.", file=sys.stderr)
+    sys.exit(1)
+
+client = OpenAI(api_key=api_key)
 
 # Kameraauswahl mit Default (1)
 print("Choose Camera:")
 print("1: Canon EOS 10 (35-135 mm Zoom)")
-print("2: Canon EOS 100 (28-80 mm Zoom)")
-print("3: Canon AF35ML (Canon Lens 40 mm)")
+print("2: Canon AF35ML (Canon Lens 40 mm)")
 cam_choice = input("Select camera [1]: ") or "1"
 
 if cam_choice == "2":
     cam = "Canon AF35ML"
     obj = "Canon Lens 40 mm"
 else:
-    cam = "Canon EOS 100"
-    obj = "28-80 mm Zoom"
+    cam = "Canon EOS 10"
+    obj = "35-135 mm Zoom"
 
 # Weitere Eingaben
 loc = input("Location: ")
@@ -27,13 +32,14 @@ add = input("Additions: ")
 fixtags = "#film #kleinbild #35mm #analog #filmphotography"
 
 ai_system_message = (
-    "I need your help! You are a photographer and have posted a photo on Instagram. "
-    "Write a text for an Instagram post in English, in simple language, in three sentences. "
-    "The post should be written in a neutral and professional tone. Start with a sentence stating the "
-    "location and date the picture was taken. Include 20 relevant hashtags and avoid the word “my”; "
-    "use “a” or similar alternatives. Always start with a sentence that includes the location and date "
-    "the picture was taken. Start with location, year/month and end with camera model, lens. "
-    "Write a total of 1000 characters. "
+    "Write an Instagram caption in English for an analog photo. "
+    "Use simple language and a neutral, professional tone. "
+    "Write one compact paragraph with three to five natural sentences. "
+    "Start with the location and the month/year the picture was taken. "
+    "Mention the camera model and lens near the end. "
+    "Avoid the word 'my'; use 'a', 'the', or another natural alternative. "
+    "Keep the caption around 700 to 1000 characters including hashtags. "
+    "Include the fixed hashtags from the user and add enough relevant hashtags to reach about 20 total. "
     "Avoid contrast sentence structures like 'not X but Y'. "
     "Avoid dramatic three-part sequences or staged escalation patterns. "
     "Do not use epic framing phrases such as 'at the end of the day', 'that is the point', or similar. "
@@ -47,7 +53,7 @@ ai_user_message = (
 )
 
 completion = client.chat.completions.create(
-    model="gpt-5.4-mini",
+    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     messages=[
         {"role": "system", "content": ai_system_message},
         {"role": "user", "content": ai_user_message}
@@ -56,5 +62,4 @@ completion = client.chat.completions.create(
 
 answer = completion.choices[0].message.content
 
-print("\n".join(["-" * 10, str(answer), "-" * 10]))
-
+print(str(answer).strip())

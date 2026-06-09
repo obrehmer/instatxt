@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+
+import os
+import re
+import sys
+from datetime import date
+
+from openai import OpenAI
+
+
+def ask_purpose():
+    print("Zweck:")
+    print("1: fiskehelper")
+    print("2: linkedin")
+    choice = input("Auswahl [1]: ").strip().lower() or "1"
+
+    if choice in {"1", "fiskehelper", "fiske", "fish"}:
+        return "fiskehelper"
+    if choice in {"2", "linkedin", "likedin"}:
+        return "linkedin"
+
+    print("Unbekannter Zweck. Bitte 'fiskehelper' oder 'linkedin' eingeben.", file=sys.stderr)
+    sys.exit(1)
+
+
+def ask_multiline(prompt):
+    print(prompt)
+    print("Mehrzeilig möglich. Mit einer leeren Zeile abschließen.")
+    lines = []
+
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if not line.strip():
+            break
+        lines.append(line)
+
+    content = "\n".join(lines).strip()
+    if not content:
+        print("Kein Input erhalten.", file=sys.stderr)
+        sys.exit(1)
+    return content
+
+
+def ask_next_step():
+    print()
+    print("Weiter:")
+    print("1: ins Englische übersetzen und abschließen")
+    print("2: weiterer Input und deutschen Text neu generieren")
+    choice = input("Auswahl [1]: ").strip().lower() or "1"
+
+    if choice in {"1", "e", "en", "englisch", "english", "finish", "abschliessen", "abschließen"}:
+        return "translate"
+    if choice in {"2", "w", "weiter", "input", "more", "neu"}:
+        return "more_input"
+
+    print("Unbekannte Auswahl. Bitte 1 oder 2 eingeben.", file=sys.stderr)
+    return ask_next_step()
+
+
+def ask_fiskehelper_metadata():
+    print("Optionale fiskehelper-Metadaten. Leer lassen für automatische Ableitung.")
+    return {
+        "title": input("Title: ").strip(),
+        "date": input(f"Date [{date.today().isoformat()}]: ").strip() or date.today().isoformat(),
+        "slug": input("Slug: ").strip(),
+        "category": input("Category: ").strip(),
+        "tags": input("Tags (comma separated): ").strip(),
+        "image": input("Image path: ").strip(),
+    }
+
+
+def slugify(value):
+    slug = value.strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    return slug.strip("-")
+
+
+def format_tags(tags):
+    tag_list = [tag.strip().lower().lstrip("#") for tag in tags.split(",") if tag.strip()]
+    if not tag_list:
+        return "  - derive 4 to 7 tags from the text"
+    return "\n".join(f"  - {tag}" for tag in tag_list)
+
+
+def build_german_system_message(purpose):
+    purpose_text = "LinkedIn-Beitrag" if purpose == "linkedin" else "fiskehelper-Blogartikel"
+    return f"""
+Schreibe aus dem Input einen deutschen Entwurf für einen {purpose_text}.
+Gib nur den deutschen Entwurf aus, keine Erklärung und keine Metadaten.
+Schreibe natürlich, persönlich und menschlich, nicht wie ein KI-generierter Text.
+Verwende einfache, klare Sätze mit normalem Rhythmus und kleinen Unregelmäßigkeiten, wenn sie natürlich wirken.
+Erfinde keine konkreten Fakten, Orte, Namen, Daten, Fische, Bilder oder Ereignisse, die nicht im Input stehen.
+Keine Emojis.
+Keine rhetorischen Fragen.
+Keine Hashtag-Listen.
+Keine überdramatischen Einstiege.
+Keine Motivationsfloskeln.
+Keine typischen KI-Formulierungen wie 'mehr als nur', 'es geht nicht um X, sondern um Y', 'am Ende des Tages', 'eine Erinnerung daran', 'in einer Welt, in der', 'diese Erfahrung hat mir gezeigt' oder ähnliche Muster.
+Vermeide Kontrast-Schablonen wie 'nicht nur ... sondern auch' und 'nicht X, sondern Y'.
+Vermeide Dreier-Aufzählungen, die wie ein künstlicher Spannungsbogen wirken.
+Vermeide Gedankenstriche als Stilmittel. Nutze normale Satzzeichen.
+""".strip()
+
+
+def build_english_system_message(purpose, metadata=None):
+    shared_rules = """
+Übersetze den deutschen Entwurf ins Englische.
+Gib ausschließlich die englische Endfassung aus.
+Die englische Fassung muss Inhalt, Stil, Perspektive, Details, Reihenfolge und Sinn des deutschen Entwurfs beibehalten.
+Schreibe natürlich, persönlich und menschlich, nicht wie ein KI-generierter Text.
+Verwende einfache, klare Sätze mit normalem Rhythmus und kleinen Unregelmäßigkeiten, wenn sie natürlich wirken.
+Erfinde keine konkreten Fakten, Orte, Namen, Daten, Fische, Bilder oder Ereignisse, die nicht im deutschen Entwurf stehen.
+Keine Emojis.
+Keine rhetorischen Fragen.
+Keine Hashtag-Listen, außer sie werden ausdrücklich verlangt.
+Keine überdramatischen Einstiege.
+Keine Motivationsfloskeln.
+Keine typischen KI-Formulierungen wie 'more than just', 'it is not about X, it is about Y', 'at the end of the day', 'a reminder that', 'in a world where', 'this experience taught me', 'left me with', 'stuck with me' oder ähnliche Muster.
+Vermeide Kontrast-Schablonen wie 'not only ... but also' und 'not X, but Y'.
+Vermeide Dreier-Aufzählungen, die wie ein künstlicher Spannungsbogen wirken.
+Vermeide Gedankenstriche als Stilmittel. Nutze normale Satzzeichen.
+""".strip()
+
+    if purpose == "linkedin":
+        return f"""
+{shared_rules}
+
+Zweck: LinkedIn.
+Gib nur den reinen Beitragstext aus, ohne Titel, Frontmatter, Markdown-Erklärung oder Einleitung.
+Der Text soll professionell, persönlich und unaufgeregt klingen.
+Kein Sales-Ton, keine übertriebene Thought-Leadership-Sprache.
+""".strip()
+
+    metadata = metadata or {}
+    title = metadata.get("title") or "derive from the text"
+    slug = metadata.get("slug") or "derive from the text"
+    category = metadata.get("category") or "derive from the text"
+    tags = format_tags(metadata.get("tags", ""))
+    image_slug = slugify(slug) if slug != "derive from the text" else "<slug>"
+    image = metadata.get("image") or f"images/{image_slug}01.jpg"
+
+    return f"""
+{shared_rules}
+
+Zweck: fiskehelper.
+Gib exakt einen Markdown-Artikel in diesem Format aus:
+---
+title: {title}
+date: {metadata.get("date", date.today().isoformat())}
+slug: {slug}
+category: {category}
+tags:
+{tags}
+image: {image}
+---
+Article text in English.
+
+![alt]({image})
+
+Regeln für fiskehelper:
+Der Titel, Slug, Kategorie, Tags und Bildpfad müssen Englisch sein.
+Wenn ein Metadatenfeld oben einen konkreten Wert hat, verwende genau diesen Wert.
+Wenn ein Metadatenfeld 'derive from the text' oder ähnlich enthält, leite es vorsichtig aus dem deutschen Entwurf ab.
+Nutze 4 bis 7 passende Tags, klein geschrieben, ohne Hash-Zeichen. Gib jeden Tag als eigene YAML-Zeile aus.
+Der Slug soll kurz, lesbar und lowercase sein.
+Die Kategorie soll ein einzelnes englisches Wort sein.
+Wenn kein Bildpfad angegeben wurde, nutze images/<slug>01.jpg.
+Füge am Ende genau ein Markdown-Bild mit demselben Bildpfad ein.
+Wenn der deutsche Entwurf Video- oder weitere Bildinformationen enthält, nur dann passende Markdown-Elemente dafür aufnehmen.
+""".strip()
+
+
+def create_completion(client, model, system_message, user_message):
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+        ],
+    )
+
+    return completion.choices[0].message.content.strip()
+
+
+def main():
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("OPENAI_API_KEY is not set.", file=sys.stderr)
+        sys.exit(1)
+
+    client = OpenAI(api_key=api_key)
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    purpose = ask_purpose()
+    metadata = ask_fiskehelper_metadata() if purpose == "fiskehelper" else None
+    inputs = [ask_multiline("Input:")]
+
+    while True:
+        german_draft = create_completion(
+            client,
+            model,
+            build_german_system_message(purpose),
+            "\n\n".join(inputs),
+        )
+
+        print()
+        print("--- Deutscher Entwurf ---")
+        print(german_draft)
+
+        if ask_next_step() == "translate":
+            break
+
+        inputs.append(ask_multiline("Weiterer Input:"))
+
+    answer = create_completion(
+        client,
+        model,
+        build_english_system_message(purpose, metadata),
+        german_draft,
+    )
+
+    print(answer)
+
+
+if __name__ == "__main__":
+    main()
