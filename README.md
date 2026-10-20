@@ -18,3 +18,7 @@ git clone git@github.com:olsarnow/instatxt.git
 pip install -r instatxt/requirements.txt
 ./instatxt/instatxt
 ```
+
+The Instagram generator optionally accepts a local image path or `file://` URL.
+It analyzes JPEG, PNG, WEBP, or GIF images and uses visible details in the caption.
+Images are resized before upload to reduce request size. Run `pip install -r instatxt/requirements.txt` to install the image processing dependency.

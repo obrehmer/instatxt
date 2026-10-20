@@ -1,18 +1,81 @@
 #!/usr/bin/env python3
 
-from openai import OpenAI
+import base64
+from io import BytesIO
+import mimetypes
 import os
 import sys
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+from openai import OpenAI, OpenAIError
+from PIL import Image, ImageOps
 
 MODEL = "azure-01/gpt-5.6-luna"
+MAX_IMAGE_DIMENSION = 1600
 
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     print("OPENAI_API_KEY is not set.", file=sys.stderr)
     sys.exit(1)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-base_url=os.getenv("OPENAI_BASE_URL", "https://models.api.uib.no/v1")
+client = OpenAI(
+    api_key=api_key,
+    base_url=os.getenv("OPENAI_BASE_URL", "https://models.api.uib.no/v1"),
+)
+
+
+def read_local_image(image_reference):
+    """Return a local image as a data URL suitable for the vision API."""
+    image_reference = image_reference.strip()
+    if not image_reference:
+        return None
+
+    parsed = urlparse(image_reference)
+    if parsed.scheme:
+        if parsed.scheme != "file" or parsed.netloc not in ("", "localhost"):
+            print("Please enter a local file path or a file:// URL.", file=sys.stderr)
+            sys.exit(1)
+        image_path = Path(unquote(parsed.path))
+    else:
+        image_path = Path(image_reference).expanduser()
+
+    if not image_path.is_file():
+        print(f"Image file not found: {image_path}", file=sys.stderr)
+        sys.exit(1)
+
+    mime_type, _ = mimetypes.guess_type(image_path.name)
+    supported_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if mime_type not in supported_types:
+        print("Image must be a JPEG, PNG, WEBP, or GIF file.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with Image.open(image_path) as source_image:
+            image = ImageOps.exif_transpose(source_image)
+            image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION))
+
+            if image.mode in ("RGBA", "LA") or (
+                image.mode == "P" and "transparency" in image.info
+            ):
+                image = image.convert("RGBA")
+                background = Image.new("RGB", image.size, "white")
+                background.paste(image, mask=image.getchannel("A"))
+                image = background
+            else:
+                image = image.convert("RGB")
+
+            image_buffer = BytesIO()
+            image.save(image_buffer, format="JPEG", quality=82, optimize=True)
+
+        image_data = base64.b64encode(image_buffer.getvalue()).decode("ascii")
+    except (OSError, ValueError) as error:
+        print(f"Could not read image file: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    return f"data:image/jpeg;base64,{image_data}"
+
+
 # Kameraauswahl mit Default (1)
 print("Choose Camera:")
 print("1: Canon EOS 10 (35-135 mm Zoom)")
@@ -31,6 +94,8 @@ loc = input("Location: ")
 year = input("Year (2026): ") or "2026"
 month = input("Month: ")
 add = input("Additions: ")
+image_reference = input("Local image path or file:// URL (optional): ")
+image_url = read_local_image(image_reference)
 fixtags = "#film #kleinbild #35mm #analog #filmphotography"
 
 ai_system_message = (
@@ -49,18 +114,36 @@ ai_system_message = (
     "Avoid rhetorical questions entirely. "
     "Do not use emojis. "
     "Avoid using dashes, especially long dashes, to create tension or emphasis; use standard punctuation instead."
+    " When a photo is provided, use only visible details from it to add a concise, accurate description of the scene. "
+    "Do not guess identities, exact locations, dates, or other facts that are not provided by the user. "
 )
 ai_user_message = (
     f"taken with {cam} with a lens {obj}, in {loc}, in the {month} of {year}, {add}, add the hashtags {fixtags}"
 )
 
-completion = client.chat.completions.create(
-    model=os.getenv("OPENAI_MODEL", "azure-01/gpt-5.6-luna"),
-    messages=[
-        {"role": "system", "content": ai_system_message},
-        {"role": "user", "content": ai_user_message}
-    ]
-)
+user_content = [{"type": "text", "text": ai_user_message}]
+if image_url:
+    user_content.append({"type": "image_url", "image_url": {"url": image_url}})
+
+try:
+    completion = client.chat.completions.create(
+        model=os.getenv("OPENAI_MODEL", "azure-01/gpt-5.6-luna"),
+        messages=[
+            {"role": "system", "content": ai_system_message},
+            {"role": "user", "content": user_content}
+        ]
+    )
+except OpenAIError as error:
+    status_code = getattr(error, "status_code", None)
+    if status_code == 502:
+        print(
+            "The AI service returned HTTP 502. The request may be too large or the service may be temporarily unavailable. "
+            "The image was resized before upload; please retry, and check the configured API endpoint if the error continues.",
+            file=sys.stderr,
+        )
+    else:
+        print(f"The AI request failed: {error}", file=sys.stderr)
+    sys.exit(1)
 
 answer = completion.choices[0].message.content
 
