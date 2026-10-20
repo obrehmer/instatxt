@@ -4,13 +4,15 @@ from openai import OpenAI
 import os
 import sys
 
+MODEL = "azure-01/gpt-5.6-luna"
+
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     print("OPENAI_API_KEY is not set.", file=sys.stderr)
     sys.exit(1)
 
-client = OpenAI(api_key=api_key)
-
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+base_url=os.getenv("OPENAI_BASE_URL", "https://models.api.uib.no/v1")
 # Kameraauswahl mit Default (1)
 print("Choose Camera:")
 print("1: Canon EOS 10 (35-135 mm Zoom)")
@@ -53,7 +55,7 @@ ai_user_message = (
 )
 
 completion = client.chat.completions.create(
-    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    model=os.getenv("OPENAI_MODEL", "azure-01/gpt-5.6-luna"),
     messages=[
         {"role": "system", "content": ai_system_message},
         {"role": "user", "content": ai_user_message}
